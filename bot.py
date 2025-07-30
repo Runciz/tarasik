@@ -1,29 +1,44 @@
-import os, logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+import telebot
 import openai
+import os
 
-logging.basicConfig(level=logging.INFO)
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# 🔑 Получаем токены из переменных окружения
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ALLOWED_CHAT_ID = -1001678704994  # ← Только этот чат
 
+# 🔧 Инициализация
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
+openai.api_key = OPENAI_API_KEY
+
+# 📂 Загружаем историю чата
 with open("clean_chat.txt", "r", encoding="utf-8") as f:
-    history = f.read()[-6000:]
+    base_context = f.read()
 
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_msg = update.message.text
-    prompt = f"Вот стиль общения:\n\n{history}\n\nСообщение: {user_msg}\nОтвет:"
+# 🤖 Генерация ответа
+def generate_reply(user_input):
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": base_context},
+            {"role": "user", "content": user_input}
+        ],
+        temperature=0.7
+    )
+    return response.choices[0].message["content"]
+
+# 📨 Обработка сообщений
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    if message.chat.id != ALLOWED_CHAT_ID:
+        return  # Игнорируем чужие чаты
+
     try:
-        resp = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.8,
-            max_tokens=200
-        )
-        reply_text = resp['choices'][0]['message']['content'].strip()
+        reply = generate_reply(message.text)
+        bot.reply_to(message, reply)
     except Exception as e:
-        reply_text = f"⚠️ Ошибка: {e}"
-    await update.message.reply_text(reply_text)
+        bot.reply_to(message, "⚠️ Kļūda: " + str(e))
 
-app = ApplicationBuilder().token(os.getenv("TELEGRAM_TOKEN")).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply))
-app.run_polling()
+# ▶️ Запуск
+print("🤖 Бот запущен и слушает чат...")
+bot.polling()
