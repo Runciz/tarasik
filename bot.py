@@ -18,7 +18,7 @@ with open("clean_chat.txt", "r", encoding="utf-8") as f:
 # 🤖 Генерация ответа
 def generate_reply(user_input):
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": base_context},
             {"role": "user", "content": user_input}
