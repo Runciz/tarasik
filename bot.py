@@ -19,7 +19,7 @@ def ask_groq(prompt):
     data = {
         "model": "llama3-70b-8192",
         "messages": [
-            {"role": "system", "content": "Отвечай по-русски, дружелюбно, с юмором, как участник группового чата."},
+            {"role": "system", "content": "Отвечай по-русски, как гопник, с юмором, как участник группового чата."},
             {"role": "user", "content": prompt}
         ]
     }
