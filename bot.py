@@ -1,53 +1,46 @@
 import telebot
-import os
 import requests
+import os
 
-# Получаем переменные окружения
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-ALLOWED_CHAT_ID = -1002489903172  # ← ID твоего чата
+# Telegram Bot Token
+BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+bot = telebot.TeleBot(BOT_TOKEN)
 
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+# Groq API ключ и endpoint
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Функция обращения к Groq
-def ask_groq(prompt):
-    url = "https://api.groq.com/openai/v1/chat/completions"
+# Загружаем стиль общения из файла
+with open("clean_chat.txt", "r", encoding="utf-8") as f:
+    CHAT_CONTEXT = f.read()[:3000]
+
+# Разрешённые чаты (группы)
+ALLOWED_CHAT_IDS = {-1001678704994, -1002489903172}
+
+@bot.message_handler(func=lambda msg: msg.chat.id in ALLOWED_CHAT_IDS and bot.get_me().username in msg.text)
+def handle_message(message):
+    prompt = message.text.replace(f"@{bot.get_me().username}", "").strip()
+
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
+
     data = {
-        "model": "llama3-70b-8192",
+        "model": "llama3-8b-8192",
         "messages": [
-            {"role": "system", "content": "Отвечай по-русски, как гопник, с юмором, как участник группового чата."},
+            {"role": "system", "content": f"Ты бот, который говорит в стиле этого чата:\n{CHAT_CONTEXT}"},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        "temperature": 0.7
     }
 
-    r = requests.post(url, headers=headers, json=data)
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
-
-# Ответить только на обращения в чате
-@bot.message_handler(func=lambda message: message.chat.type in ["group", "supergroup"])
-def handle_group(message):
-    if message.chat.id != ALLOWED_CHAT_ID:
-        return  # Не наш чат
-
-    if not (bot.get_me().username.lower() in message.text.lower()):
-        return  # Нет обращения к боту по нику
-
-    prompt = message.text
     try:
-        reply = ask_groq(prompt)
-        bot.reply_to(message, reply)
+        response = requests.post(GROQ_URL, headers=headers, json=data)
+        result = response.json()
+        answer = result["choices"][0]["message"]["content"]
+        bot.reply_to(message, answer.strip())
     except Exception as e:
         bot.reply_to(message, f"⚠️ Ошибка: {e}")
 
-# Игнорировать личные сообщения
-@bot.message_handler(func=lambda message: message.chat.type == "private")
-def handle_private(message):
-    bot.send_message(message.chat.id, "⚠️ Я работаю только в групповом чате.")
-
-# Запуск
-bot.infinity_polling()
+bot.polling()
