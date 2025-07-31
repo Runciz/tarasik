@@ -29,7 +29,7 @@ def handle_group_message(message):
     data = {
         "model": "llama3-8b-8192",
         "messages": [
-            {"role": "system", "content": "Отвечай понятно, кратко, в стиле гопника."},
+            {"role": "system", "content": "Отвечай понятно, кратко, дружелюбно."},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.7
