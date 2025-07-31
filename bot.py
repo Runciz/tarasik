@@ -1,55 +1,53 @@
-
 import telebot
-import openai
 import os
+import requests
 
-# 🔑 Получаем токены и чат ID из переменных окружения или вшиваем вручную
+# Получаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-ALLOWED_CHAT_ID = -1001678704994  # ← Только этот Telegram-чат
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+ALLOWED_CHAT_ID = -1001678704994  # ← ID твоего чата
 
-# 🔧 Инициализация
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-openai.api_key = OPENAI_API_KEY
 
-# 📂 Загружаем контекст из файла
-with open("clean_chat.txt", "r", encoding="utf-8") as f:
-    base_context = f.read()
+# Функция обращения к Groq
+def ask_groq(prompt):
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "llama3-70b-8192",
+        "messages": [
+            {"role": "system", "content": "Отвечай по-русски, дружелюбно, с юмором, как участник группового чата."},
+            {"role": "user", "content": prompt}
+        ]
+    }
 
-# ✅ Проверка: отвечать ли на сообщение
-def should_respond(message):
+    r = requests.post(url, headers=headers, json=data)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"]
+
+# Ответить только на обращения в чате
+@bot.message_handler(func=lambda message: message.chat.type in ["group", "supergroup"])
+def handle_group(message):
     if message.chat.id != ALLOWED_CHAT_ID:
-        return False
-    if not message.text:
-        return False
-    try:
-        bot_username = bot.get_me().username
-    except Exception:
-        return False
-    return f"@{bot_username}" in message.text
+        return  # Не наш чат
 
-# 🧠 Генерация ответа от GPT
-def generate_reply(user_input):
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": base_context},
-            {"role": "user", "content": user_input}
-        ],
-        temperature=0.7,
-        max_tokens=500
-    )
-    return response.choices[0].message["content"]
+    if not (bot.get_me().username.lower() in message.text.lower()):
+        return  # Нет обращения к боту по нику
 
-# 📩 Обработка сообщений
-@bot.message_handler(func=should_respond)
-def handle_message(message):
+    prompt = message.text
     try:
-        reply = generate_reply(message.text)
+        reply = ask_groq(prompt)
         bot.reply_to(message, reply)
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Kļūda: {str(e)}")
+        bot.reply_to(message, f"⚠️ Ошибка: {e}")
 
-# ▶️ Запуск
-print("🤖 Бот запущен и слушает чат...")
-bot.polling()
+# Игнорировать личные сообщения
+@bot.message_handler(func=lambda message: message.chat.type == "private")
+def handle_private(message):
+    bot.send_message(message.chat.id, "⚠️ Я работаю только в групповом чате.")
+
+# Запуск
+bot.infinity_polling()
