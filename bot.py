@@ -15,7 +15,7 @@ with open("clean_chat.txt", "r", encoding="utf-8") as f:
     CHAT_CONTEXT = f.read()[:3000]
 
 # Разрешённые чаты (группы)
-ALLOWED_CHAT_IDS = {-1001678704994, -1002489903172}
+ALLOWED_CHAT_IDS = {-1002489903172}
 
 @bot.message_handler(func=lambda msg: msg.chat.id in ALLOWED_CHAT_IDS and bot.get_me().username in msg.text)
 def handle_message(message):
