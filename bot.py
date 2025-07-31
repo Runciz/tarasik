@@ -5,7 +5,7 @@ import requests
 # Получаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-ALLOWED_CHAT_ID = -1001678704994  # ← ID твоего чата
+ALLOWED_CHAT_ID = -1002489903172  # ← ID твоего чата
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
