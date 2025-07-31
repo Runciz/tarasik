@@ -1,11 +1,12 @@
 services:
   - type: web
-    name: groq-telegram-bot
+    name: telegram-bot
     env: python
-    buildCommand: ""
-    startCommand: ./start.sh
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
     envVars:
       - key: TELEGRAM_TOKEN
-        sync: false
+        value: your_telegram_bot_token_here
       - key: GROQ_API_KEY
-        sync: false
+        value: your_groq_api_key_here
+    plan: free
